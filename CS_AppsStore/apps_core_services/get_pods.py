@@ -3,9 +3,7 @@ import requests
 
 
 def get_pods_services(request):
-    print(f"GOT HERE")
     try:
-        print("GOT INTO THE TRY")
         client_factory = TychoClientFactory()
         client = client_factory.get_client()
         tycho_url = client.url
