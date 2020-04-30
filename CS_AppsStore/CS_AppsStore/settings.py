@@ -22,7 +22,7 @@ TEMPLATE_DIR = os.path.join(BASE_DIR, "templates")
 APPLICATION_BRAND = "braini"
 
 # "TRUE" | "FALSE"
-ALLOW_DJANGO_LOGIN = "FALSE"
+ALLOW_DJANGO_LOGIN = "TRUE"
 
 
 # SECURITY WARNING: keep the secret key used in production secret!
