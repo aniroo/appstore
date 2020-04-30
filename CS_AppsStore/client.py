@@ -183,7 +183,6 @@ class TychoClient:
             "system" : system,
             "services" : services
         }
-        print(f"~~~~~~~REQUEST UP: {request}")
         logger.debug (f"request: {json.dumps(request, indent=2)}")
         response = self.start (request)
         logger.debug (json.dumps(response,indent=2))
@@ -232,7 +231,7 @@ class TychoClient:
                     
         request = {
             "name"   : self.format_name (name),
-            "username" : "MuraliKarthik",
+            "username" : "admin",
             "env"    : self.parse_env (settings),
             "system" : system,
             "services" : services
@@ -266,7 +265,7 @@ class TychoClient:
         """
         try:
             request = { "name" : self.format_name (name) } if name else {}
-            request['username'] = 'MuraliKarthik'
+            request['username'] = 'admin'
             response = self.status (request)
             logger.debug (response)
             if response.status  == 'success':
@@ -356,12 +355,10 @@ class TychoClientFactory:
             if not service:
                 url = default_url
             elif service.status and service.status.load_balancer:
-                print(f"SERVICE STATUS: {service.status}")
                 ip_address = "tycho-api"
                 port = service.spec.ports[0].port
                 logger.debug (f"located tycho api instance in kube")
                 url = f"http://{ip_address}:{port}"
-                print(f"URL STATUS: {url}")
             #elif service.status and service.status.load_balancer and \
             #     service.status.load_balancer.ingress:
             #    logger.debug ("--looking in kube for an ingress based service.")
