@@ -9,96 +9,116 @@ from django.shortcuts import render
 from django.views import generic
 
 from apps_core_services.get_pods import get_pods_services, delete_pods
+from tycho.context import Principal
+from tycho.context import ContextFactory
 
 logger = logging.getLogger(__name__)
 
-
+"""
+Tycho context for application management.
+Manages application metadata, discovers and invokes TychoClient, etc.
+"""
+tycho = ContextFactory.get (
+    context_type=settings.TYCHO_MODE,
+    product=settings.APPLICATION_BRAND)
+    
 class ApplicationManager(generic.TemplateView, LoginRequiredMixin):
-    template_name = 'apps_pods.html'
 
+    """ Application manager controller. """
+    template_name = 'apps_pods.html'
+    
     def get_context_data(self, *args, **kwargs):
+        """
+        Query the service manager to determine what services are currently running for this user.
+        Create data structures to allow the view to render results.
+        """
         context = super(ApplicationManager, self).get_context_data(*args, **kwargs)
-        logger.debug("Working in Application Manager")
-        tycho_status = get_pods_services(self.request.user.username)
-        services = tycho_status.services
-        svcs_list = []
-        path_prefix = "/static/images/"
-        path_suffix = "-logo.png"
-        for service in services:
-            full_name = service.name
+        brand = settings.APPLICATION_BRAND
+        logger.debug (f"-- running tycho.status() to get running systems.")
+        status = tycho.status ({
+            'username' : self.request.user.username
+        })
+        services = []
+        logger.debug (f"-- received {len(status.services)} services in tycho response.")
+        for service in status.services:
             name = service.name.split("-")[0]
             lname = name.capitalize()
-            logo_name = f'{lname} Logo'
-            logo_path = f'{path_prefix}{name}{path_suffix}'
-            ip_address = service.ip_address
-            if (ip_address == 'x'):
-                ip_address = '--'
-            port = service.port
-            if port == '':
-                port = '--'
-            identifier = service.identifier
-            creation_time = service.creation_time
+            service_url = f"/private/{service.name}/{self.request.user.username}/{service.identifier}/"
+            services.append({
+                'full_name'     : service.name,
+                'name'          : service_url,
+                'lname'         : lname,
+                'logo_name'     : f'{lname} Logo',
+                'logo_path'     : f'/static/images/{name}-logo.png',
+                'ip_address'    : "",
+                'port'          : "",
+                'identifier'    : service.identifier,
+                'creation_time' : service.creation_time
+            })
+        brand_map = get_brand_details (brand)        
+        return {
+            "brand"     : brand_map['name'],
+            "logo_url"  : f"/static/images/{brand}/{brand_map['logo']}",
+            "logo_alt"  : f"{brand_map['name']} Image",
+            "svcs_list" : services
+        }
+    
+class AppStart(generic.TemplateView, LoginRequiredMixin):
 
-            svcs_list.append({'full_name': full_name,
-                              'name': name,
-                              'lname': lname,
-                              'logo_name': logo_name,
-                              'logo_path': logo_path,
-                              'ip_address': ip_address,
-                              'port': port,
-                              'identifier': identifier,
-                              'creation_time': creation_time})
-
-        # Get main logo url and alt vars
-        fnames = {"braini": "braini-lg-gray.png",
-                  "scidas": "scidas-logo-sm.png",
-                  "catalyst": "bdc-logo.svg",
-                  "commonsshare": "logo-lg.png"}
-
-        brand = settings.APPLICATION_BRAND
-        logo_prefix = "/static/images/" + brand + "/"
-        logo_url = logo_prefix + fnames[brand]
-        if brand == "braini":
-            full_brand = "Brain-I"
-        elif brand == "scidas":
-            full_brand = "SciDAS"
-        elif brand == "catalyst":
-            full_brand = "Biodata Catalyst"
-        else:
-            full_brand = "CommonsShare"
-
-        logo_alt = full_brand + " Image"
-        context['brand'] = brand
-        context['logo_url'] = logo_url
-        context['logo_alt'] = logo_alt
-        context['svcs_list'] = svcs_list
-        return context
-
+    """ Application manager controller. """
+    template_name = 'starting.html'
+    
+    def get_context_data(self, *args, **kwargs):
+        """
+        Start an application.
+        """
+        principal = Principal (self.request.user.username)
+        app_id = self.request.GET['app_id']
+        system = tycho.start (principal, app_id)
+        return {
+            "url" : f"/private/{app_id}/{principal.username}/{system.identifier}/"
+        }
 
 def list_services(request):
     if request.method == "POST":
         action = request.POST.get("action")
         sid = request.POST.get("id")
-        print(f"ACTION: {action}, SID: {sid}")
+        logger.debug (f"-- action: {action} sid: {sid}")
         if action == "delete":
-            delete_pods(request, sid)
+            tycho.delete ({ "name" : sid })
+            #delete_pods(request, sid)
             sleep(2)
-            return HttpResponseRedirect("/apps/")
-    else:
-        return HttpResponseRedirect("/apps/")
-
+    return HttpResponseRedirect("/apps/")
 
 def login_whitelist(request):
-    print("LOGIN_WHITELIST: Rendering whitelist.html")
-    brand = settings.APPLICATION_BRAND
-    if brand == "braini":
-        full_brand = "Brain-I"
-    elif brand == "scidas":
-        full_brand = "SciDAS"
-    elif brand == "catalyst":
-        full_brand = "Biodata Catalyst"
-    else:
-        full_brand = "CommonsShare"
+    full_brand = get_brand_details (settings.APPLICATION_BRAND)['name']
+    logger.debug (f"-- login_whitelist: brand: {brand}, full_brand: {full_brand}")
+    return render(request, "whitelist.html", {
+        "brand"      : brand,
+        "full_brand" : full_brand
+    })
 
-    print(f"BRAND: {brand}, FULL_BRAND: {full_brand}")
-    return render(request, "whitelist.html", {"brand": brand, "full_brand": full_brand})
+def get_brand_details (brand):
+    """
+    Any special reason they can't all just be called logo.png?
+    (since they're already in namespaced subdirectories)
+    Sure would cut down on unproductive complexity here.
+    """
+    return {
+        "braini"       : {
+            "name" : "BRAIN-I",
+            "logo" : "braini-lg-gray.png"
+        },
+        "scidas"       : {
+            "name" : "SciDAS",
+            "logo" : "scidas-logo-sm.png"
+        },
+        "catalyst"     : {
+            "name" : "BioData Catalyst",
+            "logo" : "bdc-logo.svg"
+        },
+        "commonsshare" : {
+            "name" : "CommonsShare",
+            "logo" : "logo-lg.png"
+        }
+    }[brand]

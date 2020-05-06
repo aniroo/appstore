@@ -15,6 +15,9 @@ import os
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 TEMPLATE_DIR = os.path.join(BASE_DIR, "templates")
 
+DEV_PHASE=os.environ.get('DEV_PHASE', 'local')
+TYCHO_MODE=os.environ.get('TYCHO_MODE', 'null' if DEV_PHASE is 'local' else 'live')
+
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = "True"
 
@@ -251,6 +254,11 @@ LOGGING = {
             'handlers': ['syslog'],
             'level': 'WARNING',
             'propagate': False,
-        }
+        },
+        'tests': {
+            'handlers': ['console'],
+            'level': 'DEBUG',
+        },
+
     },
 }

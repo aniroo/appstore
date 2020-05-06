@@ -95,9 +95,11 @@
                     </div>
 
                     <div class="modal-body">
-                        <div class="list-group create-pod-list">
+                      <div class="list-group create-pod-list">
+			<!--                               data-url="/tycho_jupyter/login_start/"> -->
+
                             <a href="#" class="create-pod-list-item list-group-item list-group-item-action"
-                               data-url="/tycho_jupyter/login_start/">
+                               data-url="/start/" app_id="jupyter-datascience">
                                 <img class="create-pod-list-item__image" src="/static/images/jupyter-logo.png"
                                      alt="Jupyter Logo">
                                 <div class="create-pod-list-item__details">
@@ -222,7 +224,9 @@
       function launchApp() {
         const activePodSelection = document.querySelector('.create-pod-list-item.active')
         if ( activePodSelection != null ) {
-          const url = activePodSelection.getAttribute('data-url');
+            const urla = activePodSelection.getAttribute('data-url');
+	    const app_id = activePodSelection.getAttribute('app_id');
+	    const url = urla + "?app_id=" + app_id
           console.log("APPLICATION URL TO REQUEST: " + url)
           window.open(url)
 

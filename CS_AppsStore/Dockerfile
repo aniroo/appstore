@@ -1,34 +1,61 @@
-FROM python:3.7
+#
+# Copyright (c) Renaissance Computing Institute.
+# Distributed under the terms of the MIT License.
+#
+# Use a Docker-appropriate ubuntu Python. Alpine does not play well with Python.
+#
+ARG BASE_CONTAINER=python:3.7.6-slim
+FROM $BASE_CONTAINER
 
+# Configurable via the docker build command line with -p
+ARG TYCHO_BRANCH=master
+
+# Least privilege: Run as a non-root user.
+ENV USER appstore
+ENV HOME /home/$USER
+ENV UID 1000
+RUN adduser --disabled-login --home $HOME --shell /bin/bash --uid $UID $USER && \
+   chown -R $UID:$UID $HOME
+
+# Configure the container environment
 ENV PYTHONDONTWRITEBYTECODE 1
 ENV PYTHONUNBUFFERED 1
+ENV USE_WHITELIST_FILTER True
+ENV APP_HOME /usr/src/inst-mgmt
+ENV PYTHONPATH $APP_HOME:$APP_HOME/tycho
+ENV DEBUG_LEVEL WARN
+ENV VIRTUAL_ENV $APP_HOME/venv
+ENV PATH "$VIRTUAL_ENV/bin:$PATH"
 
-#Switch the working directory.
-WORKDIR /usr/src/inst-mgmt
+# Install runtime dependencies. Copy app code. Set ownership to non-root user.
+USER root
+WORKDIR $APP_HOME
+COPY . .
+RUN set -x && apt-get update && \
+	chown -R $UID:$UID $APP_HOME && \
+	apt-get install -y postgresql-server-dev-all \
+	postgresql-client git build-essential
 
-#Install pycopg2 for postgresql.
-RUN pip install psycopg2~=2.6
-RUN apt-get update 
-RUN apt-get install -y postgresql-client
+USER $USER
+WORKDIR $APP_HOME
+RUN set -x && git clone --single-branch \
+	--branch $TYCHO_BRANCH https://github.com/helxplatform/tycho.git && \
+# Virtual environment
+	python -m venv venv && \
+	. venv/bin/activate && \
+# Upgrade Pip and install app dependencies
+	pip install --upgrade pip && \
+	pip install -r tycho/requirements.txt && \
+	pip install -r ./requirements.txt && \	
+# why is this not in requirements.txt?
+	pip install psycopg2~=2.6 netifaces
 
-
-# Install Virtual Environment
-RUN pip install --upgrade pip
-RUN pip install virtualenv
-COPY ./requirements.txt /usr/src/inst-mgmt/requirements.txt
-COPY ./tycho_api-5.0.2-py3-none-any.whl /usr/src/inst-mgmt/tycho_api-5.0.2-py3-none-any.whl
-RUN virtualenv /usr/src/inst-mgmt/python_allauth
-RUN /bin/bash -c "source /usr/src/inst-mgmt/python_allauth/bin/activate"
-RUN pip install -r /usr/src/inst-mgmt/requirements.txt
-RUN pip install /usr/src/inst-mgmt/tycho_api-5.0.2-py3-none-any.whl
-RUN pip install pyyaml
-RUN pip install netifaces 
-RUN pip install jinja2 
-RUN pip install kubernetes
-RUN pip install requests
-
+# Run as a non-root user: least privilege.
+USER $USER
+# Expose the AppStore Django app.
 EXPOSE 8000
-EXPOSE 5432
-COPY . /usr/src/inst-mgmt
+#EXPOSE 5432 # Why are we exposing postgres?
 
-CMD ["gunicorn", "--bind", ":8000", "CS_AppsStore.wsgi:application"]
+CMD [ "gunicorn", "--bind", ":8000", "--timeout=5000", \
+	"--log-level", "$DEBUG_LEVEL", "CS_AppsStore.wsgi:application" ]
+
