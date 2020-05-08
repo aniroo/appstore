@@ -4,6 +4,7 @@
 .idea/
 log/*
 !log/.gitkeep
+*.env
 project_allauth
 venv
 DATABASE.sqlite3
