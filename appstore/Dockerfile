@@ -47,7 +47,9 @@ RUN set -x && \
 	. venv/bin/activate && \
 # Upgrade Pip and install app dependencies
 	pip install --upgrade pip && \
-	pip install -r tycho/requirements.txt && \
+        ls -lat && \
+        find . && \
+	pip install -r ./tycho/requirements.txt && \
 	pip install -r ./requirements.txt && \	
 # why is this not in requirements.txt?
 	pip install psycopg2~=2.6 netifaces
