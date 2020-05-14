@@ -49,6 +49,7 @@ RUN set -x && \
 	pip install --upgrade pip && \
         ls -lat && \
         find . && \
+        find $APP_HOME && \
 	pip install -r ./tycho/requirements.txt && \
 	pip install -r ./requirements.txt && \	
 # why is this not in requirements.txt?
