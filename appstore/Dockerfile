@@ -39,8 +39,14 @@ RUN set -x && apt-get update && \
 
 USER $USER
 WORKDIR $APP_HOME
-git clone --single-branch \
+RUN set -x && \
+        git clone --single-branch \
 	--branch $TYCHO_BRANCH https://github.com/helxplatform/tycho.git && \
+        cd tycho && \
+        git checkout `git rev-parse --short HEAD`
+
+USER $USER
+WORKDIR $APP_HOME
 RUN set -x && \
 # Virtual environment
 	python -m venv venv && \
