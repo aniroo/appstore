@@ -39,8 +39,8 @@ RUN set -x && apt-get update && \
 
 USER $USER
 WORKDIR $APP_HOME
-#git clone --single-branch \
-#	--branch $TYCHO_BRANCH https://github.com/helxplatform/tycho.git && \
+git clone --single-branch \
+	--branch $TYCHO_BRANCH https://github.com/helxplatform/tycho.git && \
 RUN set -x && \
 # Virtual environment
 	python -m venv venv && \
@@ -50,7 +50,7 @@ RUN set -x && \
         ls -lat && \
         find . && \
         find $APP_HOME && \
-#	pip install -r ./tycho/requirements.txt && \
+	pip install -r ./tycho/requirements.txt && \
 	pip install -r ./requirements.txt && \	
 # why is this not in requirements.txt?
 	pip install psycopg2~=2.6 netifaces
