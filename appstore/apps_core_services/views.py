@@ -21,10 +21,16 @@ tycho = ContextFactory.get(
     context_type=settings.TYCHO_MODE,
     product=settings.APPLICATION_BRAND)
 
+def get_host(request):
+    host = request.META["HTTP_HOST"]
+    return host
 
-def form_service_url(app_id, service, username):
-    url = f"http://{service.ip_address}:{service.port}" if service.ip_address \
-        else f"/private/{app_id}/{username}/{service.identifier}/"
+def form_service_url(host, app_id, service, username, system=None):
+    if service.ip_address:
+        url = f"http://{service.ip_address}:{service.port}"
+    else:
+        url = f"http://{host}/private/{app_id}/{username}/{system.identifier}/" if system \
+            else f"http://{host}/private/{app_id}/{username}/{service.identifier}/"
     logger.debug(f"-- app-networking constructed url: {url}")
     return url
 
@@ -54,7 +60,7 @@ class ApplicationManager(generic.TemplateView, LoginRequiredMixin):
             services.append({
                 'app_id': app_id,
                 'full_name': service.name,
-                'name': form_service_url(app_id, service, self.request.user.username),
+                'name': form_service_url(get_host(self.request), app_id, service, self.request.user.username),
                 'lname': lname,
                 'display_name': app.get('name'),
                 'logo_name': f'{lname} Logo',
@@ -91,7 +97,7 @@ class AppStart(generic.TemplateView, LoginRequiredMixin):
         return {
             "name": tycho.apps[app_id]['name'],
             "icon": tycho.apps[app_id]['icon'],
-            "url": form_service_url(app_id, system.services[0], self.request.user.username)
+            "url":  form_service_url(get_host(self.request), app_id, system.services[0], self.request.user.username, system)
         }
 
 
@@ -101,6 +107,7 @@ class AppConnect(generic.TemplateView, LoginRequiredMixin):
 
     def get_context_data(self, *args, **kwargs):
         """ Return to a running application. """
+        print(f"{self.request.GET}")
         return {
             "url": self.request.GET.get("url"),
             "icon": self.request.GET.get("icon"),
